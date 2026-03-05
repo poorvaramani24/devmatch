@@ -9,7 +9,11 @@ from app.websocket.chat import router as ws_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Database init failed: {e}")
     yield
 
 
