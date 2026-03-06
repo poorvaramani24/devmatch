@@ -144,6 +144,86 @@ apps/mobile/
 - **GitHub sync** — Pull languages and repo count from GitHub profiles
 - **Profile setup** — 5-step wizard (basics, professional, tech stack, personality, fun prompts)
 
+## Deploy to Railway
+
+### Prerequisites
+
+- A [Railway](https://railway.app) account
+- Railway CLI installed (`npm i -g @railway/cli`)
+- A GitHub repo connected to Railway (or use `railway up` for direct deploys)
+
+### 1. Create a new Railway project
+
+```bash
+railway login
+railway init
+```
+
+### 2. Provision databases
+
+Add **PostgreSQL** and **Redis** plugins from the Railway dashboard (or via CLI):
+
+```bash
+railway add --plugin postgresql
+railway add --plugin redis
+```
+
+Railway automatically injects `DATABASE_URL` and `REDIS_URL` into your services.
+
+### 3. Deploy the backend
+
+```bash
+# Link to a new service for the backend
+railway service create backend
+railway link --service backend
+
+# Set the root directory and environment variables
+railway variables set \
+  SECRET_KEY=<your-secret-key> \
+  FRONTEND_URL=<your-web-railway-url>
+
+# Deploy from the backend directory
+railway up --detach -d apps/backend
+```
+
+The backend `railway.toml` is pre-configured with a Dockerfile build and `/api/health` health check.
+
+### 4. Deploy the web app
+
+```bash
+# Link to a new service for the web frontend
+railway service create web
+railway link --service web
+
+# Set the backend API URL (use your backend's Railway domain)
+railway variables set \
+  VITE_API_URL=https://<backend-service>.up.railway.app \
+  VITE_WS_URL=wss://<backend-service>.up.railway.app
+
+# Deploy from the web directory
+railway up --detach -d apps/web
+```
+
+The web `railway.toml` builds with Vite and serves the static bundle via `npx serve`.
+
+### 5. Generate public domains
+
+In the Railway dashboard, go to each service's **Settings > Networking** and click **Generate Domain** to get public URLs, or use the CLI:
+
+```bash
+railway domain --service backend
+railway domain --service web
+```
+
+### 6. Update cross-service URLs
+
+After generating domains, update the environment variables so the services can talk to each other:
+
+- **Backend** `FRONTEND_URL` → set to the web app's Railway URL
+- **Web** `VITE_API_URL` / `VITE_WS_URL` → set to the backend's Railway URL
+
+Redeploy or restart each service for the changes to take effect.
+
 ## Environment Variables
 
 ### Backend (`apps/backend/.env`)
